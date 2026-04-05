@@ -1,18 +1,16 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://localhost:5000/api/auth',
+    baseURL: 'http://localhost:3000/api/auth',
     withCredentials: true
 });
 
 
 export async function register({username, email, password}) {
-    return api.post('/api/auth/register', {
+    return api.post('/register', {
         username,
         email,
         password
-    }, {
-        withCredentials: true
     }).then(res => {
         console.log(res.data);
         return res.data;
@@ -22,7 +20,7 @@ export async function register({username, email, password}) {
 }
 
 export async function login({email, password}) {
-    return axios.post('/api/auth/login', {
+    return api.post('/login', {
         email,
         password
     }).then(res => {
@@ -34,7 +32,7 @@ export async function login({email, password}) {
 }
 
 export async function logout() {
-    return api.get('/api/auth/logout', {}).then(res => {
+    return api.get('/logout', {}).then(res => {
         console.log(res.data);
         return res.data;
     }).catch(err => {
@@ -43,11 +41,10 @@ export async function logout() {
 }
 
 export async function getme() {
-    return api.get('http://localhost:5000/api/auth/me', {}).then(res => {
+    return api.get('/get-me', {}).then(res => {
         console.log(res.data);
         return res.data;
     }).catch(err => {
         console.error(err);
-    }
-    );
+    });
 }

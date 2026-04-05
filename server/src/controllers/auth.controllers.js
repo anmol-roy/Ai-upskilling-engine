@@ -41,7 +41,11 @@ async function registerUser(req, res) {
             sameSite: 'strict',
         });
 
-        res.status(201).json({ message: 'User registered successfully', token });
+        res.status(201).json({ 
+            message: 'User registered successfully', 
+            user: { id: newUser._id, username: newUser.username, email: newUser.email },
+            token 
+        });
     } catch (error) {
         res.status(500).json({ message: 'Error registering user', error: error.message });
     }
