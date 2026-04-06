@@ -55,9 +55,12 @@ export const useAuth = () => {
     setLoading(true);
     try {
       const res = await getme();
-      setUser(res.user);
+      if (res && res.user) {
+        setUser(res.user);
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Failed to fetch user:', err);
+      setUser(null);
     } finally {
       setLoading(false);
     }
