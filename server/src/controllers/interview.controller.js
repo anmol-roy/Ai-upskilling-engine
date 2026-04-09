@@ -36,6 +36,20 @@ async function generateInterviewReport(req, res) {
     }
 }
 
+async function getInterviewReportByIdController(req, res) {
+    try {
+        const { interviewId } = req.params;
+        const interviewReport = await InterviewReport.findOne({ _id: req.user._id, user: req.user._id }).sort({ createdAt: -1 }).select("-resume -selfDescription -jobDescription -__v -technicalQuestions -behavioralQuestions -skillGaps -preparationPlan");
+        if (!interviewReport) {
+            return res.status(404).json({ message: "Interview report not found" });
+        }
+        res.json(interviewReport);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+}
+
 module.exports = {
     generateInterviewReport
 };
