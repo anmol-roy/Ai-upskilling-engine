@@ -54,12 +54,26 @@ const preparationPlanSchema = new mongoose.Schema({
 
 const interviewReportSchema = new mongoose.Schema({
     jobDescription: { type: String, required: true },
-    resume: { type: String, required: optional },
+    resume: { type: String  },
     selfDescription: { type: String, },
     matchScore: { type: Number, min: 0, max: 100 },
+    technicalQuestions: [technicalQuestionSchema],
+    behavioralQuestions: [behavioralQuestionSchema],
+    skillGaps: [{
+        skillGap: { type: String, required: [true, "skill gap is required"] },
+        severity: { type: String, required: [true, "severity is required"], enum: ["low", "medium", "high"] }
+    }],
+    preparationPlan: [preparationPlanSchema],
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'users',
+        required: true
+    }
+}, { timestamps: true });
 
-});
+
+
 
 const InterviewReportModel = mongoose.model('InterviewReport', interviewReportSchema);
 
-model.exports = InterviewReportModel;
+module.exports = InterviewReportModel;

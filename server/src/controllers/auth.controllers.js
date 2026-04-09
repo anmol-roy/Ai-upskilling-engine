@@ -55,6 +55,13 @@ async function registerUser(req, res) {
 
 async function loginUser(req, res) {
     try {
+        console.log('Login request body:', req.body); // Debug log
+        console.log('Content-Type:', req.headers['content-type']); // Debug log
+
+        if (!req.body) {
+            return res.status(400).json({ message: 'Request body is required' });
+        }
+
         const { email, password } = req.body;
 
         // Move validation to the TOP

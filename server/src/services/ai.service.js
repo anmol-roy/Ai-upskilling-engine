@@ -5,7 +5,6 @@ const { z } = require("zod");
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENAI_API_KEY);
 
 // ================= SCHEMA =================
-
 const interviewReportSchema = z.object({
     matchScore: z.number().min(0).max(100),
 
