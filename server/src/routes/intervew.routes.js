@@ -1,7 +1,7 @@
-const express = require('express');
-const authMiddleware = require('../middleware/auth.middleware.js');
-const interviewController = require('../controllers/interview.controller.js');
-const { upload } = require('../middleware/file.middleware.js');
+import express from 'express';
+import authMiddleware from '../middleware/auth.middleware.js';
+import { generateInterviewReport, getInterviewReportByIdController, getAllInterviewReportsController, generateResumePdfController } from '../controllers/interview.controller.js';
+import { upload } from '../middleware/file.middleware.js';
 
 
 const interviewRouter = express.Router();
@@ -12,30 +12,29 @@ const interviewRouter = express.Router();
  * @access Private
  */
 
-interviewRouter.post('/', authMiddleware, upload.single("resume"), interviewController.generateInterviewReport);
+interviewRouter.post('/', authMiddleware, upload.single("resume"), generateInterviewReport);
 
 /**
  * @route GET /api/interview/report/:interviewId
  * @desc Get interview report by ID
  * @access Private
  */
-interviewRouter.get('/report/:interviewId', authMiddleware, interviewController.generateInterviewReport);
+interviewRouter.get('/report/:interviewId', authMiddleware, getInterviewReportByIdController);
 
 /**
  * @route GET /api/interview/
  * @desc Get all interview reports for the authenticated user
  * @access Private
  */
-async function getAllInterviewReportsController(req, res) {
-    try {
-        const interviewReports = await InterviewReport.find({ user: req.user._id }).sort({ createdAt: -1 });
-        res.json(interviewReports);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Internal Server Error" });
-    }
-}
+interviewRouter.get('/', authMiddleware, getAllInterviewReportsController);
 
+/**
+ * @route GET /api/interview/pdf/:interviewId
+ * @desc Generate PDF for interview report
+ * @access Private
+ */
+interviewRouter.get('/pdf/:interviewId', authMiddleware, generateResumePdfController);
+interviewRouter.get('/resume/pdf/:interviewReportId', authMiddleware, generateResumePdfController);
 /**
  * @route service to get interview report by interviewId
  */
@@ -44,7 +43,7 @@ export async function getInterviewReportById(interviewId) {
         const interviewReport = await InterviewReport.findOne({ _id: interviewId, user: interviewId }).sort({ createdAt: -1 }).select("-resume -selfDescription -jobDescription -__v");
         if (!interviewReport) {
             throw new Error("Interview report not found");
-        }
+        }t
         return interviewReport;
     } catch (error) {
         console.error(error);
@@ -66,4 +65,4 @@ export async function getAllInterviewReports(userId) {
     }
 }
 
-module.exports = interviewRouter;
+export default interviewRouter;

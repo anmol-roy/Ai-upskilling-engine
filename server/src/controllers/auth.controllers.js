@@ -1,8 +1,8 @@
-const userModel = require('../models/user.model.js');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-require('dotenv').config();
-const Blacklist = require('../models/blacklist.modal.js');
+import userModel from '../models/user.model.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import 'dotenv/config';
+import Blacklist from '../models/blacklist.modal.js';
 
 
 
@@ -83,8 +83,8 @@ async function loginUser(req, res) {
 
         res.cookie('token', token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            secure: false, // false for localhost
+            sameSite: 'lax', // 'lax' for development
         });
 
         return res.status(200).json({ 
@@ -126,9 +126,8 @@ async function getMe(req, res) {
 
 
 
-module.exports = {
+export {
     registerUser,
-
     loginUser,
     logoutUser,
     getMe

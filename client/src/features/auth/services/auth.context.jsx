@@ -20,7 +20,9 @@ export const AuthProvider = ({ children }) => {
           setUser(res.user);
         }
       } catch (err) {
-        console.error('Auth initialization failed:', err);
+        if (err.response?.status !== 401) {
+          console.error('Auth initialization failed:', err);
+        }
         setUser(null);
       } finally {
         setLoading(false);

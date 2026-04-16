@@ -1,7 +1,8 @@
-const express = require('express');
+import express from 'express';
+import { registerUser, loginUser, logoutUser, getMe } from '../controllers/auth.controllers.js';
+import authUser from '../middleware/auth.middleware.js';
+
 const authRouter = express.Router();
-const authController = require('../controllers/auth.controllers.js');
-const authUser = require('../middleware/auth.middleware.js');
 
 
 /**
@@ -9,14 +10,14 @@ const authUser = require('../middleware/auth.middleware.js');
  * @desc Register a new user
  * 
  **/ 
-authRouter.post('/register', authController.registerUser );
+authRouter.post('/register', registerUser );
 
 /**
  * @route POST /api/auth/login
  * @desc Login a user
  * 
  **/ 
-authRouter.post('/login', authController.loginUser );
+authRouter.post('/login', loginUser );
 
 
 /**
@@ -24,7 +25,7 @@ authRouter.post('/login', authController.loginUser );
  * @desc Logout a user by blacklisting the token
  * 
  **/ 
-authRouter.get('/logout', authController.logoutUser );
+authRouter.get('/logout', logoutUser );
 
 /**
  * @route GET /api/auth/get-me
@@ -32,11 +33,11 @@ authRouter.get('/logout', authController.logoutUser );
  * 
  **/ 
 // Change authController.authUser to just authUser
-authRouter.get('/get-me', authUser, authController.getMe );
+authRouter.get('/get-me', authUser, getMe );
 
  
 
 
 
-module.exports = authRouter;
+export default authRouter;
 
