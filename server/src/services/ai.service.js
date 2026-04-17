@@ -1,242 +1,140 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { z } from "zod";
+const { GoogleGenAI } = require("@google/genai")
+const { z } = require("zod")
+const { zodToJsonSchema } = require("zod-to-json-schema")
+const puppeteer = require("puppeteer")
 
-// 🔐 Init
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENAI_API_KEY);
+const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENAI_API_KEY })
 
-// ================= SCHEMA =================
+// --- Schemas ---
+
 const interviewReportSchema = z.object({
-    matchScore: z.number().min(0).max(100),
+    title: z.string().describe("Exact job title from the job description"),
+    matchScore: z.number().min(0).max(100).describe("Calibrated fit score: 70+ strong, 50-70 moderate, <50 significant gaps"),
+    technicalQuestions: z.array(z.object({
+        question: z.string(),
+        intention: z.string().describe("Why an interviewer asks this"),
+        answer: z.string().describe("Key points, approach, and what to cover in the answer")
+    })).min(8).max(10),
+    behavioralQuestions: z.array(z.object({
+        question: z.string(),
+        intention: z.string(),
+        answer: z.string().describe("STAR format guidance with pointers from the candidate's own resume")
+    })).min(5).max(6),
+    skillGaps: z.array(z.object({
+        skill: z.string(),
+        severity: z.enum(["low", "medium", "high"]),
+        recommendation: z.string().describe("Specific action to close this gap")
+    })),
+    preparationPlan: z.array(z.object({
+        day: z.number(),
+        focus: z.string(),
+        tasks: z.array(z.string()).min(3).max(5)
+    })).min(7).max(14),
+})
 
-    technicalQuestions: z.array(
-        z.object({
-            question: z.string(),
-            intention: z.string(),
-            answer: z.string()
-        })
-    ),
+// --- Helpers ---
 
-    behavioralQuestions: z.array(
-        z.object({
-            question: z.string(),
-            intention: z.string(),
-            answer: z.string()
-        })
-    ),
-
-    skillGaps: z.array(
-        z.object({
-            skill: z.string(),
-            severity: z.enum(["low", "medium", "high"])
-        })
-    ),
-
-    preparationPlan: z.array(
-        z.object({
-            day: z.number(),
-            focus: z.string(),
-            tasks: z.array(z.string())
-        })
-    ),
-    title: z.string().describe("Title of the interview report for which interview is being conducted"),
-});
-
-
-// ================= FIX FUNCTION =================
-
-function fixArray(arr, type) {
-    if (!Array.isArray(arr)) return [];
-
-    return arr.map((item, index) => {
-        if (typeof item === "string") {
-
-            if (type === "tech") {
-                return {
-                    question: item,
-                    intention: "Evaluate technical understanding",
-                    answer: "Explain concept with examples and complexity"
-                };
-            }
-
-            if (type === "behavior") {
-                return {
-                    question: item,
-                    intention: "Assess behavior and decision making",
-                    answer: "Use STAR method"
-                };
-            }
-
-            if (type === "skill") {
-                return {
-                    skill: item,
-                    severity: "medium"
-                };
-            }
-
-            if (type === "plan") {
-                return {
-                    day: index + 1,
-                    focus: item,
-                    tasks: ["Study concepts", "Solve problems"]
-                };
-            }
-        }
-
-        return item;
-    });
-}
-
-
-// ================= MAIN FUNCTION =================
-
-async function generateInterviewReport({ jobdescribe, resume, selfdescribe }) {
-    try {
-        const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash"
-        });
-
-        const prompt = `
-You are an expert interviewer AI.
-
-Return STRICT JSON ONLY.
-
-IMPORTANT:
-- Do NOT return strings inside arrays
-- Arrays must contain OBJECTS
-- Do NOT skip fields
-
-Format:
-
-{
-  "matchScore": number,
-  "technicalQuestions": [
-    {
-      "question": string,
-      "intention": string,
-      "answer": string
-    }
-  ],
-  "behavioralQuestions": [
-    {
-      "question": string,
-      "intention": string,
-      "answer": string
-    }
-  ],
-  "skillGaps": [
-    {
-      "skill": string,
-      "severity": "low" | "medium" | "high"
-    }
-  ],
-  "preparationPlan": [
-    {
-      "day": number,
-      "focus": string,
-      "tasks": string[]
-    }
-  ]
-}
-
-Job Description:
-${jobdescribe}
-
-Resume:
-${resume}
-
-Self Description:
-${selfdescribe}
-`;
-
-        const result = await model.generateContent({
-            contents: [
-                {
-                    role: "user",
-                    parts: [{ text: prompt }]
-                }
-            ],
-            generationConfig: {
-                responseMimeType: "application/json"
-            }
-        });
-
-        const text = result.response.text();
-
-        console.log("\n🔥 RAW AI RESPONSE:\n", text);
-
-        let parsed = {};
-
+async function withRetry(fn, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-            parsed = JSON.parse(text);
+            return await fn()
         } catch (err) {
-            console.error("❌ JSON Parse Failed");
+            if (attempt === maxRetries) throw err
+            await new Promise(res => setTimeout(res, Math.pow(2, attempt) * 500))
         }
-
-        // 🔥 AUTO FIX (IMPORTANT)
-        parsed.technicalQuestions = fixArray(parsed.technicalQuestions, "tech");
-        parsed.behavioralQuestions = fixArray(parsed.behavioralQuestions, "behavior");
-        parsed.skillGaps = fixArray(parsed.skillGaps, "skill");
-        parsed.preparationPlan = fixArray(parsed.preparationPlan, "plan");
-
-        // 🔥 FALLBACK DEFAULTS
-        parsed.matchScore = parsed.matchScore || 50;
-
-        // ✅ VALIDATION
-        const validated = interviewReportSchema.parse(parsed);
-
-        return validated;
-
-    } catch (error) {
-        console.error("❌ AI Service Error:", error);
-        throw error;
     }
+}
+
+// --- Core Functions ---
+
+async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
+    const prompt = `You are an expert technical recruiter and interview coach with 10+ years at top tech companies.
+
+Analyze the candidate profile against the job description and generate a comprehensive, actionable interview prep report.
+
+<candidate_resume>${resume}</candidate_resume>
+<self_description>${selfDescription}</self_description>
+<job_description>${jobDescription}</job_description>
+
+Instructions:
+- matchScore: Be honest. 70+ = strong fit, 50-69 = moderate, <50 = significant gaps
+- technicalQuestions: 8-10 questions tailored to the SPECIFIC tech stack in the JD. Include system design if applicable.
+- behavioralQuestions: 5-6 STAR-format questions referencing the candidate's actual resume experiences
+- skillGaps: Specific technical/domain gaps only. Include a concrete recommendation per gap.
+- preparationPlan: 7-14 day plan. Each day: 3-5 tasks with real resource names (book chapters, LeetCode tags, specific docs).
+- title: Exact job title from the JD`
+
+    return await withRetry(async () => {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.0-flash",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: zodToJsonSchema(interviewReportSchema),
+                temperature: 0.4, // Lower = more focused, less hallucination
+            }
+        })
+
+        const raw = JSON.parse(response.text)
+        const result = interviewReportSchema.safeParse(raw)
+        if (!result.success) throw new Error(`Validation failed: ${JSON.stringify(result.error.flatten())}`)
+        return result.data
+    })
 }
 
 async function generatePdfFromHtml(htmlContent) {
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage({});
-    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-
-    const pdfBuffer = await page.pdf({ format: 'A4', margin: { top: '15mm', bottom: '15mm', left: '15mm', right: '15mm' } });
-    await browser.close();
-    return pdfBuffer;
-
-
-    // Fetch the interview report data
-    if (!interviewReport) {
-        throw new Error("Interview report not found");
+    const browser = await puppeteer.launch({ args: ["--no-sandbox"] })
+    try {
+        const page = await browser.newPage()
+        await page.setContent(htmlContent, { waitUntil: "networkidle0" })
+        const pdfBuffer = await page.pdf({
+            format: "A4",
+            printBackground: true, // needed for background colors
+            margin: { top: "20mm", bottom: "20mm", left: "15mm", right: "15mm" }
+        })
+        return pdfBuffer
+    } finally {
+        await browser.close() // always close even on error
     }
 }
 
-async function generateResumePdf({ resume , jobDescription, selfDescription }) {
-    const resumepdfSchema = z.object({
-        html : z.string().describe("the html content for the resume which can be converted to pdf using any library like puppeteer or jsPDF")
-
+async function generateResumePdf({ resume, selfDescription, jobDescription }) {
+    const resumePdfSchema = z.object({
+        html: z.string().describe("Self-contained HTML with inline CSS for the resume")
     })
-    const prompt = ` generate a html content for a candidate which includes the following sections:
-            Resume: ${resume}
-            Job Description: ${jobDescription}
-            Self Description: ${selfDescription}
-            the response should be a json object with a single field 
-            the resume should be tailored for the given job descriptioon and should highlights the candidate's strengths and skills that are relevant to the job description and also includes a section for self description which should be concise and highlights the candidate's personality and work ethic. the html content should be well formatted and can be directly converted to pdf using any library like puppeteer or jsPDF. the response should be in json format with a single field html which contains the html content for the resume.
-            the content of resume should be not sound like ai generated and should be in a human tone. the html content should be structured with clear sections, headings, and bullet points to enhance readability and presentation. the resume should effectively showcase the candidate's qualifications and suitability for the job while maintaining a professional and engaging tone.`
-            you can highlights the candidate strength and relevant experience in the resume and also include a section for self description which should be concise and highlights the candidate's personality and work ethic. the html content should be well formatted and can be directly converted to pdf using any library like puppeteer or jsPDF. the response should be in json format with a single field html which contains the html content for the resume.
-            it should be  1 page long and should be in a human tone and should not sound like ai generated. the html content should be structured with clear sections, headings, and bullet points to enhance readability and presentation. the resume should effectively showcase the candidate's qualifications and suitability for the job while maintaining a professional and engaging tone.
-            the content should be ats friendly and should include relevant keywords from the job description to increase the chances of passing through applicant tracking systems. the resume should be tailored for the given job description and should highlights the candidate's strengths and skills that are relevant to the job description and also includes a section for self description which should be concise and highlights the candidate's personality and work ethic. the html content should be well formatted and can be directly converted to pdf using any library like puppeteer or jsPDF. the response should be in json format with a single field html which contains the html content for the resume.
-            the seme should be so lengthy and detailed as to provide a comprehensive and compelling resume that effectively showcases the candidate's qualifications and suitability for the job while maintaining a professional and engaging tone. the content should be ats friendly and should include relevant keywords from the job description to increase the chances of passing through applicant tracking systems. the resume should be tailored for the given job description and should highlights the candidate's strengths and skills that are relevant to the job description and also includes a section for self description which should be concise and highlights the candidate's personality and work ethic. the html content should be well formatted and can be directly converted to pdf using any library like puppeteer or jsPDF. the response should be in json format with a single field html which contains the html content for the resume.
- `   
-const response = await genAI.getGenerativeModel({
-        model: "gemini-2.5-flash"
-        consens: prompt,
-    }).generateContent({
-        contents: [
-        response : application/json
-        ]
 
-        const jsoncontent =  json.parse(response.response.text())
+    const prompt = `You are a professional resume writer and frontend developer.
 
+Create an ATS-optimized, polished resume in HTML tailored to this job.
+
+<resume>${resume}</resume>
+<self_description>${selfDescription}</self_description>
+<job_description>${jobDescription}</job_description>
+
+STRICT RULES:
+1. Inline CSS only — no external stylesheets, no scripts
+2. Single-column layout — no tables or multi-column (ATS requirement)
+3. Max 2 A4 pages — be concise, cut filler
+4. Clean design: white background, #2563EB accent, 10pt body font
+5. Keyword-match naturally to JD — no stuffing
+6. Do NOT invent experience — only use what's provided
+7. Quantify achievements where data supports it
+8. Output JSON with exactly one key: "html"`
+
+    return await withRetry(async () => {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.0-flash",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: zodToJsonSchema(resumePdfSchema),
+                temperature: 0.3,
+            }
+        })
+
+        const { html } = JSON.parse(response.text)
+        return await generatePdfFromHtml(html)
     })
 }
-export {
-    generateInterviewReport
-};
+
+module.exports = { generateInterviewReport, generateResumePdf }

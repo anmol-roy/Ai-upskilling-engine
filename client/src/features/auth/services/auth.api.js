@@ -1,54 +1,66 @@
-import axios from 'axios';
+import axios from "axios"
+
 
 const api = axios.create({
-    baseURL: 'http://localhost:3000/api/auth',
+    baseURL: "/",
     withCredentials: true
-});
+})
 
+export async function register({ username, email, password }) {
 
-export async function register({username, email, password}) {
-    return api.post('/register', {
-        username,
-        email,
-        password
-    }).then(res => {
-        console.log(res.data);
-        return res.data;
-    }).catch(err => {
-        console.error(err);
-        throw err;
-    });
+    try {
+        const response = await api.post('/api/auth/register', {
+            username, email, password
+        })
+
+        return response.data
+
+    } catch (err) {
+
+        console.log(err)
+
+    }
+
 }
 
-export async function login({email, password}) {
-    return api.post('/login', {
-        email,
-        password
-    }).then(res => {
-        console.log(res.data);
-        return res.data;
-    }).catch(err => {
-        console.error(err);
-        throw err;
-    });
+export async function login({ email, password }) {
+
+    try {
+
+        const response = await api.post("/api/auth/login", {
+            email, password
+        })
+
+        return response.data
+
+    } catch (err) {
+        console.log(err)
+    }
+
 }
 
 export async function logout() {
-    return api.get('/logout', {}).then(res => {
-        console.log(res.data);
-        return res.data;
-    }).catch(err => {
-        console.error(err);
-        throw err;
-    });
+    try {
+
+        const response = await api.get("/api/auth/logout")
+
+        return response.data
+
+    } catch (err) {
+
+    }
 }
 
-export async function getme() {
-    return api.get('/get-me', {}).then(res => {
-        console.log(res.data);
-        return res.data;
-    }).catch(err => {
-        console.error(err);
-        throw err;
-    });
+export async function getMe() {
+
+    try {
+
+        const response = await api.get("/api/auth/get-me")
+
+        return response.data
+
+    } catch (err) {
+        console.log(err)
+    }
+
 }
