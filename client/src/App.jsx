@@ -2,7 +2,7 @@ import { RouterProvider } from "react-router"
 import { router } from "./app.routes.jsx"
 import { AuthProvider } from "./features/auth/auth.context.jsx"
 import { InterviewProvider } from "./features/interview/interview.context.jsx"
-import { ThemeProvider } from "./features/onboarding/ThemeContext.jsx"
+import { ThemeProvider } from "./features/onboarding/Themecontext.jsx"
 import "./index.css"
 
 function App() {

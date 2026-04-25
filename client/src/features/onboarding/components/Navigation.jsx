@@ -1,7 +1,7 @@
 import { ArrowRight, Sparkles, BarChart3, Sun, Moon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTheme } from '../ThemeContext.jsx';
+import { useTheme } from '../Themecontext.jsx';
 import '../../../index.css';
 
 function Navigation({ isScrolled }) {
