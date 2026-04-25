@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Navigation } from '../components/Navigation';
-import { HeroSection } from '../components/Navigation';
-import { FeaturesSection } from '../components/Navigation';
-import { HowItWorks } from '../components/Navigation';
-import { DashboardSection } from '../components/Navigation';
-import { FooterSection } from '../components/Navigation';
+import { Navigation } from '../components/Navigation.jsx';
+import { HeroSection } from '../components/Navigation.jsx';
+import { FeaturesSection } from '../components/Navigation.jsx';
+import { HowItWorks } from '../components/Navigation.jsx';
+import { DashboardSection } from '../components/Navigation.jsx';
+import { FooterSection } from '../components/Navigation.jsx';
 
 function LandingPage() {
   const [isScrolled, setIsScrolled] = useState(false);
