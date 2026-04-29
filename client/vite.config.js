@@ -9,7 +9,6 @@ export default defineConfig({
   ],
   server: {
     proxy: {
-      '/api': 'http://localhost:3000',
       '/api': 'https://ai-upskill-engine.onrender.com/'
 
     }
