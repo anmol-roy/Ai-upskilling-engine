@@ -56,54 +56,7 @@ Built with React, Node.js/Express, MongoDB, and Google Gemini AI.
 
 ---
 
-## Getting Started
 
-### Prerequisites
-
-- Node.js 18+
-- MongoDB instance (local or Atlas)
-- Google Gemini API key — get one at [aistudio.google.com](https://aistudio.google.com)
-
-### 1. Clone the repo
-
-```bash
-git clone <repo-url>
-cd <repo-folder>
-```
-
-### 2. Set up the server
-
-```bash
-cd server
-npm install
-```
-
-Create a `.env` file in the `server/` directory:
-
-```env
-PORT=3000
-MONGO_URI=mongodb://localhost:27017/ai-interview-prep
-JWT_SECRET=your_jwt_secret_here
-GOOGLE_GENAI_API_KEY=your_gemini_api_key_here
-```
-
-Start the server:
-
-```bash
-npm run dev
-```
-
-### 3. Set up the client
-
-```bash
-cd client
-npm install
-npm run dev
-```
-
-The frontend runs on `http://localhost:5173` and proxies API calls to `http://localhost:3000`.
-
----
 
 ## API Overview
 
